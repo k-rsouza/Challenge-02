@@ -28,19 +28,30 @@ def create_meal():
 
 # Editar refeição
 @app.route('/meals/<int:meal_id>', methods=['PUT'])
-def edit_meal(user_id):
+def edit_meal(meal_id):
     data = request.json
-    meal = Meal.query.get_or_404(user_id)
+    meals = Meal.query.filter_by(meal_id)  # Busca a refeição pelo id ou retorna 404
+
+    if not meals:
+        return jsonify({
+            "message": "The meal you`ew"
+        })
+    # Atualiza os campos recebidos no JSON
     meal.name = data.get('name', meal.name)
     meal.description = data.get('description', meal.description)
+    
     if 'date_time' in data:
         meal.date_time = datetime.strptime(data['date_time'], '%Y-%m-%d %H:%M:%S')
+    
     if 'is_on_diet' in data:
         meal.is_on_diet = data['is_on_diet']
+    
     if 'user_id' in data:
         meal.user_id = data['user_id']
+
     db.session.commit()
-    return jsonify(meal.to_dict())
+
+    return jsonify(meal.to_dict()), 200
 
 # Apagar refeição
 @app.route('/meals/<int:meal_id>', methods=['DELETE'])
@@ -55,19 +66,27 @@ def delete_meal(meal_id):
 }), 200
 
 # Listar refeições de um usuário
-@app.route('/meals', methods=['GET'])
-def list_meals():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'user_id is required'}), 400
+@app.route('/users/<int:user_id>/meals', methods=['GET'])
+def list_meals(user_id):
     meals = Meal.query.filter_by(user_id=user_id).all()
-    return jsonify([meal.to_dict() for meal in meals])
+    if not meals:  # nenhum resultado encontrado
+       return jsonify({
+           "message": f"No meals found for user {user_id}..."
+       }), 404
+    
+    return jsonify([meal.to_dict() for meal in meals]), 200
 
 # Visualizar uma única refeição
 @app.route('/meals/<int:meal_id>', methods=['GET'])
 def get_meal(meal_id):
-    meal = Meal.query.get_or_404(meal_id)
-    return jsonify(meal.to_dict())
+    meals = Meal.query.filter_by(id=meal_id).all()
+    
+    if not meals:
+        return jsonify({
+            "message": f"Meal {meal_id} not found..."
+        })
+    
+    return jsonify([meal.to_dict() for meal in meals]), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
