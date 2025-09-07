@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, request, jsonify
 from datetime import datetime
 from database import db
+from models import meal
 from models.meal import Meal
 
 app = Flask(__name__)
@@ -30,28 +31,35 @@ def create_meal():
 @app.route('/meals/<int:meal_id>', methods=['PUT'])
 def edit_meal(meal_id):
     data = request.json
-    meals = Meal.query.filter_by(meal_id)  # Busca a refeição pelo id ou retorna 404
+    meal = Meal.query.filter_by(id=meal_id).first()
 
-    if not meals:
-        return jsonify({
-            "message": "The meal you`ew"
-        })
-    # Atualiza os campos recebidos no JSON
+    if not meal:
+        return jsonify({"error": f"Meal with id {meal_id} not found..."}), 404
+
+    # Atualiza apenas os campos enviados
     meal.name = data.get('name', meal.name)
     meal.description = data.get('description', meal.description)
-    
+
     if 'date_time' in data:
-        meal.date_time = datetime.strptime(data['date_time'], '%Y-%m-%d %H:%M:%S')
-    
+        try:
+            meal.date_time = datetime.strptime(data['date_time'], '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return jsonify({"error": "Invalid date_time format. Use YYYY-MM-DD HH:MM:SS"}), 400
+
     if 'is_on_diet' in data:
+        if not isinstance(data['is_on_diet'], bool):
+            return jsonify({"error": "is_on_diet must be a boolean"}), 400
         meal.is_on_diet = data['is_on_diet']
-    
+
     if 'user_id' in data:
         meal.user_id = data['user_id']
 
     db.session.commit()
 
-    return jsonify(meal.to_dict()), 200
+    return jsonify({
+        "message": f"Meal {meal.id} updated successfully!",
+        "meal": meal.to_dict()
+    }), 200
 
 # Apagar refeição
 @app.route('/meals/<int:meal_id>', methods=['DELETE'])
